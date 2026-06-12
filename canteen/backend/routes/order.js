@@ -474,46 +474,119 @@ router.get("/active", async (req, res) => {
     }
 });
 
-// REDEEM COUPON (KITCHEN STAFF END)
-router.post("/redeem", async (req, res) => {
+// GET COUNTER STATS (Total, Redeemed, Pending)
+router.get("/counter-stats", async (req, res) => {
     try {
-        const { coupon_code } = req.body;
-        if (!coupon_code) {
-            return res.status(400).json({ success: false, message: "Coupon code is required." });
-        }
-
-        // Check if order exists with this coupon code and is in 'COUPON_GENERATED' status
-        const [orders] = await db.query(
-            "SELECT order_id, order_status FROM orders WHERE coupon_code = ?",
-            [coupon_code]
-        );
-
-        if (orders.length === 0) {
-            return res.status(404).json({ success: false, message: "Order coupon not found." });
-        }
-
-        const order = orders[0];
-        if (order.order_status === "REDEEMED") {
-            return res.status(400).json({ success: false, message: "Coupon has already been redeemed!" });
-        }
-        if (order.order_status === "CANCELLED") {
-            return res.status(400).json({ success: false, message: "Coupon has been cancelled." });
-        }
-
-        // Update status to REDEEMED
-        await db.query(
-            "UPDATE orders SET order_status = 'REDEEMED' WHERE coupon_code = ?",
-            [coupon_code]
-        );
-
+        const [[{ total }]] = await db.query("SELECT COUNT(*) AS total FROM orders WHERE DATE(created_at) = CURDATE()");
+        const [[{ redeemed }]] = await db.query("SELECT COUNT(*) AS redeemed FROM orders WHERE order_status = 'REDEEMED' AND DATE(created_at) = CURDATE()");
+        const [[{ pending }]] = await db.query("SELECT COUNT(*) AS pending FROM orders WHERE order_status = 'COUPON_GENERATED' AND DATE(created_at) = CURDATE()");
         res.json({
             success: true,
-            message: `Coupon code '${coupon_code}' redeemed successfully! Serve the meal.`
+            total: total || 0,
+            redeemed: redeemed || 0,
+            pending: pending || 0
         });
     } catch (err) {
-        console.error("REDEEM COUPON ERROR:", err);
+        console.error("Counter Stats Error:", err);
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
+// POST CLOSE COUNTER (Bulk redeem all pending lunch coupons for today)
+router.post("/close-counter-lunch", async (req, res) => {
+    try {
+        const [result] = await db.query(
+            `UPDATE orders 
+             SET order_status = 'REDEEMED' 
+             WHERE order_status = 'COUPON_GENERATED' 
+               AND category = 'Lunch' 
+               AND DATE(created_at) = CURDATE()`
+        );
+        res.json({
+            success: true,
+            message: `Closed counter. ${result.affectedRows} pending lunch coupons redeemed successfully.`
+        });
+    } catch (err) {
+        console.error("Close Counter Error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// GET VERIFY COUPON (Scanner Verification)
+router.get("/verify-coupon/:couponCode", async (req, res) => {
+    try {
+        const { couponCode } = req.params;
+        const [rows] = await db.query(`
+            SELECT 
+                o.order_id,
+                o.coupon_code,
+                o.order_status,
+                e.full_name AS employee_name
+            FROM orders o
+            JOIN employee e ON e.employee_id = o.employee_id
+            WHERE o.coupon_code = ?
+        `, [couponCode]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Invalid Coupon QR Code" });
+        }
+
+        const [items] = await db.query(`
+            SELECT item_name, quantity FROM order_items WHERE order_id = ?
+        `, [rows[0].order_id]);
+
+        res.json({
+            success: true,
+            order: {
+                order_id: rows[0].order_id,
+                coupon_code: rows[0].coupon_code,
+                order_status: rows[0].order_status,
+                employee_name: rows[0].employee_name,
+                items: items
+            }
+        });
+    } catch (err) {
+        console.error("Verify Coupon Error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// POST REDEEM COUPON (supports both routes and naming conventions)
+router.post("/redeem-coupon", redeemCouponHandler);
+router.post("/redeem", redeemCouponHandler);
+
+async function redeemCouponHandler(req, res) {
+    try {
+        const { couponCode, coupon_code } = req.body;
+        const code = couponCode || coupon_code;
+        if (!code) {
+            return res.status(400).json({ success: false, message: "Coupon code is required" });
+        }
+
+        // Check current status
+        const [rows] = await db.query("SELECT order_status, order_id FROM orders WHERE coupon_code = ?", [code]);
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Coupon code not found" });
+        }
+
+        const order = rows[0];
+        if (order.order_status === "REDEEMED") {
+            return res.status(400).json({ success: false, message: "This coupon has already been redeemed" });
+        } else if (order.order_status === "CANCELLED") {
+            return res.status(400).json({ success: false, message: "This coupon has been cancelled" });
+        }
+
+        // Update status to REDEEMED
+        await db.query("UPDATE orders SET order_status = 'REDEEMED' WHERE coupon_code = ?", [code]);
+
+        res.json({
+            success: true,
+            message: `Coupon code '${code}' redeemed successfully! Serve the meal.`
+        });
+    } catch (err) {
+        console.error("Redeem Coupon Error:", err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+}
 
 module.exports = router;
