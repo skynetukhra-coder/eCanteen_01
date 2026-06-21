@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 // Auth
 import Login from "./pages/auth/Login";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 
 // User Pages
 import Home from "./pages/user/Home";
@@ -39,6 +40,7 @@ function App() {
       {/* Authentication */}
       <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* User Routes */}
       <Route path="/home" element={<Home />} />

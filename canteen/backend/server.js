@@ -1,8 +1,31 @@
+const path = require("path");
+const fs = require("fs");
+
+// Load .env from the closest directory containing it
+const envPaths = [
+    path.join(__dirname, ".env"),
+    path.join(__dirname, "..", ".env"),
+    path.join(__dirname, "..", "..", ".env")
+];
+
+let envLoaded = false;
+for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+        require("dotenv").config({ path: envPath });
+        envLoaded = true;
+        break;
+    }
+}
+
+if (!envLoaded) {
+    require("dotenv").config();
+}
+
 const express = require("express");
 const cors = require("cors");
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // DB Connection
 const db = require("./config/db");
@@ -11,7 +34,6 @@ const db = require("./config/db");
 app.use(cors());
 app.use(express.json());
 
-const path = require("path");
 
 app.use(
     "/uploads",
@@ -19,6 +41,8 @@ app.use(
         path.join(__dirname, "uploads")
     )
 );
+
+app.use(express.static(path.join(__dirname, "public")));
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -54,7 +78,7 @@ app.use("/api/admin-stats", adminStatsRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 // Health Check
-app.get("/", (req, res) => {
+app.get("/api/health", (req, res) => {
     res.json({
         success: true,
         message: "Canteen API Running"
@@ -64,6 +88,14 @@ app.get("/", (req, res) => {
 // Auth Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/employee", employeeRoutes);
+
+// Fallback all other GET requests (non-API, non-Uploads) to index.html for client-side routing
+app.get("*all", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // 404
 app.use((req, res) => {

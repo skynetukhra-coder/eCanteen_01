@@ -26,7 +26,9 @@ exports.login = async (req, res) => {
         console.log("DB Password:", user.password);
         console.log("Entered Password:", password);
 
-        if (user.password !== password) {
+        const bcrypt = require("bcrypt");
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
             return res.json({
                 success: false,
                 message: "Invalid Password"
@@ -83,16 +85,19 @@ exports.changePassword = async (req, res) => {
 
         const user = rows[0];
 
-        if (user.password !== current_password) {
+        const bcrypt = require("bcrypt");
+        const isMatch = await bcrypt.compare(current_password, user.password);
+        if (!isMatch) {
             return res.status(400).json({
                 success: false,
                 message: "Incorrect current password."
             });
         }
 
+        const hashedNewPassword = await bcrypt.hash(new_password, 10);
         await db.query(
             "UPDATE employee SET password = ? WHERE employee_id = ?",
-            [new_password, employee_id]
+            [hashedNewPassword, employee_id]
         );
 
         // Insert log in audit_logs
@@ -195,6 +200,198 @@ exports.loginGoogle = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Google Authentication Failed: " + error.message
+        });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required."
+            });
+        }
+
+        // Check if user exists
+        const [rows] = await db.query(
+            "SELECT employee_id, email, username FROM employee WHERE email = ?",
+            [email]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No account found with this email address."
+            });
+        }
+
+        const user = rows[0];
+
+        // If the user's password is the google_oauth_placeholder, they should sign in via Google
+        const [passCheck] = await db.query("SELECT password FROM employee WHERE employee_id = ?", [user.employee_id]);
+        if (passCheck[0].password === "google_oauth_placeholder") {
+            return res.status(400).json({
+                success: false,
+                message: "This account uses Google Sign-In. Please sign in using Google."
+            });
+        }
+
+        // Generate a 6-digit random OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Expiry set to 5 minutes from now
+        const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+        // Save OTP to DB
+        await db.query(
+            "UPDATE employee SET otp_code = ?, otp_expiry = ? WHERE employee_id = ?",
+            [otp, expiry, user.employee_id]
+        );
+
+        // Send Email
+        const { sendOtpEmail } = require("../services/emailService");
+        await sendOtpEmail(user.email, otp);
+
+        return res.json({
+            success: true,
+            message: "OTP sent successfully to your registered email."
+        });
+
+    } catch (error) {
+        console.error("FORGOT PASSWORD ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to process forgot password request: " + error.message
+        });
+    }
+};
+
+exports.verifyOtp = async (req, res) => {
+    try {
+        const { email, otp_code } = req.body;
+
+        if (!email || !otp_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing email or OTP code."
+            });
+        }
+
+        const [rows] = await db.query(
+            "SELECT employee_id, otp_code, otp_expiry FROM employee WHERE email = ?",
+            [email]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee profile not found."
+            });
+        }
+
+        const user = rows[0];
+
+        if (!user.otp_code || user.otp_code !== otp_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP code."
+            });
+        }
+
+        const now = new Date();
+        const expiry = new Date(user.otp_expiry);
+        if (now > expiry) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP code has expired."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "OTP verified successfully."
+        });
+
+    } catch (error) {
+        console.error("VERIFY OTP ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to verify OTP: " + error.message
+        });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { email, otp_code, new_password } = req.body;
+
+        if (!email || !otp_code || !new_password) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing email, OTP code, or new password."
+            });
+        }
+
+        const [rows] = await db.query(
+            "SELECT employee_id, otp_code, otp_expiry FROM employee WHERE email = ?",
+            [email]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Employee profile not found."
+            });
+        }
+
+        const user = rows[0];
+
+        // Double check OTP validation for safety
+        if (!user.otp_code || user.otp_code !== otp_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP code."
+            });
+        }
+
+        const now = new Date();
+        const expiry = new Date(user.otp_expiry);
+        if (now > expiry) {
+            return res.status(400).json({
+                success: false,
+                message: "OTP code has expired."
+            });
+        }
+
+        // Hash new password
+        const bcrypt = require("bcrypt");
+        const hashedPassword = await bcrypt.hash(new_password, 10);
+
+        // Update password and clear OTP columns
+        await db.query(
+            "UPDATE employee SET password = ?, otp_code = NULL, otp_expiry = NULL WHERE employee_id = ?",
+            [hashedPassword, user.employee_id]
+        );
+
+        // Insert log in audit_logs
+        await db.query(
+            "INSERT INTO audit_logs (action_name, details, severity) VALUES ('PASSWORD_RESET_VIA_OTP', ?, 'INFO')",
+            [`User (ID: ${user.employee_id}) successfully reset their password via Email OTP.`]
+        );
+
+        return res.json({
+            success: true,
+            message: "Password reset completed successfully."
+        });
+
+    } catch (error) {
+        console.error("RESET PASSWORD ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to reset password: " + error.message
         });
     }
 };
