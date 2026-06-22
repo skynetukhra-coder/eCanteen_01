@@ -16,6 +16,16 @@ import axios from "axios";
 
 import "./Payment.css";
 
+const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+};
+
 function Payment() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -60,6 +70,116 @@ function Payment() {
 
     const remainingBalance =
         walletBalance - totalAmount;
+
+    const handlePayment = async () => {
+        if (paymentMethod === "Wallet" || paymentMethod === "Cash") {
+            if (paymentMethod === "Wallet" && remainingBalance < 0) {
+                alert("Insufficient Wallet Balance! Please use another payment method.");
+                return;
+            }
+            navigate("/paymentsuccess", {
+                state: {
+                    cartItems,
+                    totalItems,
+                    totalAmount,
+                    paymentMethod,
+                    user
+                }
+            });
+            return;
+        }
+
+        // Online Payments: BHIM UPI, PhonePe, Google Pay, SuperMoney, Scan QR
+        const isScriptLoaded = await loadRazorpayScript();
+        if (!isScriptLoaded) {
+            alert("Failed to load payment gateway SDK. Please check your internet connection.");
+            return;
+        }
+
+        try {
+            // 1. Create Razorpay order on backend
+            const orderRes = await axios.post("http://localhost:5000/api/payments/razorpay-order", {
+                amount: totalAmount
+            });
+
+            if (!orderRes.data.success) {
+                alert("Failed to create payment order on server.");
+                return;
+            }
+
+            const { order_id, amount: rzpAmount, currency } = orderRes.data;
+
+            // 2. Configure Razorpay checkout
+            const options = {
+                key: "rzp_test_T4m8kfRsgPJrwL",
+                amount: rzpAmount,
+                currency: currency,
+                name: "eCanteen",
+                description: "Book Food Checkout",
+                order_id: order_id,
+                handler: async function (response) {
+                    try {
+                        const coupon_code = "CPN" + Date.now();
+                        const category = cartItems[0]?.category || "Lunch";
+                        const order_payload = {
+                            employee_id: user.employee_id,
+                            category,
+                            total_amount: totalAmount,
+                            payment_mode: paymentMethod,
+                            coupon_code,
+                            items: cartItems.map(item => ({
+                                item_id: item.id,
+                                item_name: item.name,
+                                quantity: item.selectedQty,
+                                price: Number(item.price)
+                            }))
+                        };
+
+                        const verifyRes = await axios.post("http://localhost:5000/api/payments/verify-online", {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            order_payload
+                        });
+
+                        if (verifyRes.data.success) {
+                            sessionStorage.setItem("orderCreated", "true");
+                            navigate("/paymentsuccess", {
+                                state: {
+                                    cartItems,
+                                    totalItems,
+                                    totalAmount,
+                                    paymentMethod,
+                                    user,
+                                    verifiedOrderId: verifyRes.data.order_id
+                                }
+                            });
+                        } else {
+                            alert("Payment verification failed. Order not placed.");
+                        }
+                    } catch (err) {
+                        console.error("Signature verification error:", err);
+                        alert("Error verifying payment signature with server.");
+                    }
+                },
+                prefill: {
+                    name: user.full_name || "",
+                    email: user.email || "",
+                    contact: user.mobile || ""
+                },
+                theme: {
+                    color: "#7c3aed"
+                }
+            };
+
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+
+        } catch (err) {
+            console.error("Payment initialization error:", err);
+            alert("Could not connect to payment server. Please try again.");
+        }
+    };
 
     const handleLogout = () => {
         localStorage.clear();
@@ -240,6 +360,14 @@ function Payment() {
                                 <label className="payment-option">
                                     <input
                                         type="radio"
+                                        checked={paymentMethod === "Credit/Debit Card"}
+                                        onChange={() => setPaymentMethod("Credit/Debit Card")}
+                                    />
+                                    Credit / Debit Card
+                                </label>
+                                <label className="payment-option">
+                                    <input
+                                        type="radio"
                                         checked={paymentMethod === "BHIM UPI"}
                                         onChange={() => setPaymentMethod("BHIM UPI")}
                                     />
@@ -350,23 +478,7 @@ function Payment() {
 
                         <button
                             className="pay-btn"
-                            onClick={() => {
-                                if (paymentMethod === "Wallet" && remainingBalance < 0) {
-                                    alert("Insufficient Wallet Balance! Please use another payment method.");
-                                    return;
-                                }
-
-                                navigate("/paymentsuccess", {
-                                    state: {
-                                        cartItems,
-                                        totalItems,
-                                        totalAmount,
-                                        paymentMethod,
-                                        user
-                                    }
-                                });
-
-                            }}
+                            onClick={handlePayment}
                         >
                             Proceed To Pay
                         </button>

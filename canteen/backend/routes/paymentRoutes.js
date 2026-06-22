@@ -14,6 +14,161 @@ function generateWalletSignature(employeeId, balance) {
 }
 
 
+const Razorpay = require("razorpay");
+
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_51t91lKz9382jD",
+    key_secret: process.env.RAZORPAY_KEY_SECRET || "rXz51T91lKz9382jD1234567"
+});
+
+// CREATE RAZORPAY ORDER
+router.post("/razorpay-order", async (req, res) => {
+    try {
+        const { amount } = req.body;
+        if (!amount || isNaN(amount)) {
+            return res.status(400).json({ success: false, message: "Invalid amount." });
+        }
+        const options = {
+            amount: Math.round(parseFloat(amount) * 100), // Razorpay expects amount in paise
+            currency: "INR",
+            receipt: `rcpt_${Date.now()}`
+        };
+
+        const rzpOrder = await razorpay.orders.create(options);
+        res.json({
+            success: true,
+            order_id: rzpOrder.id,
+            amount: rzpOrder.amount,
+            currency: rzpOrder.currency
+        });
+    } catch (error) {
+        console.error("Razorpay order creation error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// VERIFY ONLINE PAYMENT SIGNATURE
+router.post("/verify-online", async (req, res) => {
+    try {
+        const {
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+            order_payload
+        } = req.body;
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !order_payload) {
+            return res.status(400).json({ success: false, message: "Missing required verification data." });
+        }
+
+        const sign = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSign = crypto
+            .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "rXz51T91lKz9382jD1234567")
+            .update(sign)
+            .digest("hex");
+
+        if (razorpay_signature !== expectedSign) {
+            return res.status(400).json({ success: false, message: "Payment verification failed. Signature mismatch." });
+        }
+
+        // Fetch last payment ID to format next database ID (e.g., PAY0026)
+        const [lastPayment] = await db.query(`
+            SELECT payment_id
+            FROM payments
+            ORDER BY payment_id DESC
+            LIMIT 1
+        `);
+
+        let paymentId = "PAY0001";
+        if (lastPayment.length > 0) {
+            const lastNo = parseInt(lastPayment[0].payment_id.replace("PAY", ""));
+            paymentId = `PAY${String(lastNo + 1).padStart(4, "0")}`;
+        }
+
+        // Avoid duplicate order insertions (if request was sent twice)
+        const [existingOrder] = await db.query(
+            "SELECT order_id FROM orders WHERE coupon_code = ?",
+            [order_payload.coupon_code]
+        );
+
+        let orderId;
+        if (existingOrder.length > 0) {
+            orderId = existingOrder[0].order_id;
+        } else {
+            // 1. Insert order
+            const [orderResult] = await db.query(
+                `INSERT INTO orders 
+                (employee_id, category, total_amount, payment_mode, payment_status, order_status, coupon_code, qr_code_path) 
+                VALUES (?, ?, ?, ?, 'SUCCESS', 'COUPON_GENERATED', ?, ?)`,
+                [
+                    order_payload.employee_id,
+                    order_payload.category,
+                    order_payload.total_amount,
+                    order_payload.payment_mode,
+                    order_payload.coupon_code,
+                    `/qr/${order_payload.coupon_code}.png`
+                ]
+            );
+            orderId = orderResult.insertId;
+
+            // 2. Insert items
+            for (const item of order_payload.items) {
+                await db.query(
+                    `INSERT INTO order_items 
+                    (order_id, item_id, item_name, quantity, unit_price, total_price) 
+                    VALUES (?, ?, ?, ?, ?, ?)`,
+                    [
+                        orderId,
+                        item.item_id,
+                        item.item_name,
+                        item.quantity,
+                        item.price,
+                        Number(item.price) * parseInt(item.quantity)
+                    ]
+                );
+            }
+        }
+
+        // 3. Insert payment record
+        const [existingPayment] = await db.query(
+            "SELECT payment_id FROM payments WHERE order_id = ?",
+            [orderId]
+        );
+
+        if (existingPayment.length === 0) {
+            await db.query(
+                `INSERT INTO payments 
+                (payment_id, order_id, employee_id, amount, payment_method, payment_status, remarks) 
+                VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?)`,
+                [
+                    paymentId,
+                    orderId,
+                    order_payload.employee_id,
+                    order_payload.total_amount,
+                    order_payload.payment_mode,
+                    `Razorpay ID: ${razorpay_payment_id}`
+                ]
+            );
+
+            // Log inside audit logs
+            await db.query(
+                "INSERT INTO audit_logs (action_name, details, severity) VALUES ('MEAL_PURCHASE_ONLINE', ?, 'INFO')",
+                [`Employee ID ${order_payload.employee_id} paid ₹${order_payload.total_amount} via Online (${order_payload.payment_mode}) for Order ID ${orderId}.`]
+            );
+        }
+
+        res.json({
+            success: true,
+            order_id: orderId,
+            payment_id: paymentId
+        });
+
+    } catch (err) {
+        console.error("Verification DB Error:", err);
+        res.status(500).json({ success: false, message: "Internal server error during database operations." });
+    }
+});
+
 // CREATE PAYMENT
 router.post("/create", async (req, res) => {
 

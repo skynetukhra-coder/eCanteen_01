@@ -140,6 +140,22 @@ function PaymentSuccess() {
 
             try {
 
+                const verifiedOrderId = location.state?.verifiedOrderId;
+                if (verifiedOrderId) {
+                    const now = new Date();
+                    setPaymentDetails({
+                        orderId: `ORD${verifiedOrderId}`,
+                        meal: cartItems.map(item => `${item.name} x ${item.selectedQty}`).join(", "),
+                        amount: `₹${totalAmount}`,
+                        paymentMode: paymentMethod,
+                        date: now.toLocaleDateString(),
+                        time: now.toLocaleTimeString(),
+                        couponCode: location.state?.couponCode || "CPN" + Date.now()
+                    });
+                    setLoading(false);
+                    return;
+                }
+
                 const alreadyCreated =
                     sessionStorage.getItem(
                         "orderCreated"
