@@ -596,4 +596,381 @@ router.get(
 
     });
 
+const easebuzzService = require("../services/easebuzzService");
+
+// ----------------------------------------------------
+// EASEBUZZ PAYMENT GATEWAY ROUTES
+// ----------------------------------------------------
+
+// 1. INITIATE EASEBUZZ PAYMENT
+router.post("/easebuzz-initiate", async (req, res) => {
+    try {
+        const {
+            amount,
+            type = "ORDER", // "ORDER" or "WALLET_RECHARGE"
+            employee_id,
+            order_payload,
+            customer_name,
+            customer_email,
+            customer_phone
+        } = req.body;
+
+        if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+            return res.status(400).json({ success: false, message: "Invalid payment amount." });
+        }
+
+        if (!employee_id) {
+            return res.status(400).json({ success: false, message: "Employee ID is required." });
+        }
+
+        // Fetch user info from database if not passed
+        const [empRows] = await db.query(
+            "SELECT full_name, username, email, google_email, mobile FROM employee WHERE employee_id = ?",
+            [employee_id]
+        );
+        const emp = empRows[0] || {};
+
+        const name = (customer_name || emp.full_name || emp.username || "Employee").trim();
+        const email = (customer_email || emp.email || emp.google_email || "canteen@wb.gov.in").trim();
+        const phone = (customer_phone || emp.mobile || "9999999999").trim();
+
+        // Stock verification for Food Orders
+        if (type === "ORDER" && order_payload && Array.isArray(order_payload.items)) {
+            for (const item of order_payload.items) {
+                const [menuItemRows] = await db.query(
+                    "SELECT item_name, available_qty FROM menu_items WHERE item_id = ?",
+                    [item.item_id || item.id]
+                );
+                if (menuItemRows.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: `Item not found: ${item.item_name || item.name}`
+                    });
+                }
+                const available = parseInt(menuItemRows[0].available_qty || 0);
+                const reqQty = parseInt(item.quantity || item.selectedQty || 1);
+                if (available < reqQty) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Insufficient stock for ${menuItemRows[0].item_name}. Available: ${available}, Requested: ${reqQty}`
+                    });
+                }
+            }
+        }
+
+        // Generate unique transaction ID
+        const prefix = type === "WALLET_RECHARGE" ? "EBZ_WLT_" : "EBZ_ORD_";
+        const txnid = `${prefix}${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        const productinfo = type === "WALLET_RECHARGE" ? "Canteen Wallet Recharge" : "Canteen Food Order";
+
+        const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+        const host = req.get("host");
+        const callbackUrl = `${protocol}://${host}/api/payments/easebuzz-response`;
+
+        const initiateResult = await easebuzzService.initiatePayment({
+            txnid,
+            amount,
+            productinfo,
+            firstname: name,
+            phone,
+            email,
+            surl: callbackUrl,
+            furl: callbackUrl,
+            udf1: type,
+            udf2: String(employee_id),
+            udf3: type === "ORDER" && order_payload ? (order_payload.category || "General") : "Recharge"
+        });
+
+        if (!initiateResult.success) {
+            return res.status(400).json(initiateResult);
+        }
+
+        return res.json({
+            success: true,
+            access_key: initiateResult.access_key,
+            txnid,
+            key: initiateResult.key,
+            env: initiateResult.env
+        });
+
+    } catch (err) {
+        console.error("Easebuzz initiate error:", err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Failed to initiate Easebuzz payment."
+        });
+    }
+});
+
+// 2. VERIFY EASEBUZZ PAYMENT (Called from client onResponse SDK callback)
+router.post("/easebuzz-verify", async (req, res) => {
+    try {
+        const {
+            easebuzz_response,
+            type = "ORDER",
+            employee_id,
+            order_payload
+        } = req.body;
+
+        if (!easebuzz_response) {
+            return res.status(400).json({ success: false, message: "Missing Easebuzz response payload." });
+        }
+
+        console.log("[Easebuzz Verify] Received response:", easebuzz_response);
+
+        // 1. Check status
+        if (easebuzz_response.status !== "success") {
+            return res.status(400).json({
+                success: false,
+                message: `Payment not completed. Status: ${easebuzz_response.status || "Unknown"}`
+            });
+        }
+
+        // 2. Verify reverse hash integrity
+        const isHashValid = easebuzzService.verifyResponseHash(easebuzz_response);
+        if (!isHashValid) {
+            console.error("[Easebuzz Verify] Hash signature verification failed!");
+            return res.status(400).json({
+                success: false,
+                message: "Security signature mismatch. Payment verification failed."
+            });
+        }
+
+        const txnid = easebuzz_response.txnid;
+        const easebuzzid = easebuzz_response.easebuzzid || txnid;
+        const paidAmount = parseFloat(easebuzz_response.amount || 0);
+        const empId = employee_id || parseInt(easebuzz_response.udf2);
+
+        // CASE A: WALLET RECHARGE
+        if (type === "WALLET_RECHARGE" || easebuzz_response.udf1 === "WALLET_RECHARGE") {
+            // Idempotency check: see if transaction already processed
+            const [existingTx] = await db.query(
+                "SELECT transaction_id FROM wallet_transactions WHERE reference_id = ? OR utr_number = ?",
+                [txnid, easebuzzid]
+            );
+
+            if (existingTx.length > 0) {
+                const [walletRows] = await db.query("SELECT balance FROM wallets WHERE employee_id = ?", [empId]);
+                return res.json({
+                    success: true,
+                    message: "Payment already processed.",
+                    newBalance: walletRows[0]?.balance || 0
+                });
+            }
+
+            // Fetch current wallet balance
+            const [walletRows] = await db.query("SELECT balance FROM wallets WHERE employee_id = ?", [empId]);
+            let currentBalance = 0.00;
+            let isNewWallet = true;
+
+            if (walletRows.length > 0) {
+                currentBalance = parseFloat(walletRows[0].balance || 0);
+                isNewWallet = false;
+            }
+
+            const newBalance = currentBalance + paidAmount;
+            const newSig = generateWalletSignature(empId, newBalance);
+
+            if (isNewWallet) {
+                await db.query(
+                    "INSERT INTO wallets (employee_id, balance, signature) VALUES (?, ?, ?)",
+                    [empId, newBalance, newSig]
+                );
+            } else {
+                await db.query(
+                    "UPDATE wallets SET balance = ?, signature = ? WHERE employee_id = ?",
+                    [newBalance, newSig, empId]
+                );
+            }
+
+            // Log inside wallet_transactions
+            await db.query(
+                `INSERT INTO wallet_transactions 
+                (employee_id, type, amount, status, mode, utr_number, reference_id, title) 
+                VALUES (?, 'credit', ?, 'SUCCESS', 'Easebuzz Online', ?, ?, 'Instant Wallet Recharge (Easebuzz)')`,
+                [empId, paidAmount, easebuzzid, txnid]
+            );
+
+            // Audit log
+            await db.query(
+                "INSERT INTO audit_logs (action_name, details, severity) VALUES ('WALLET_ONLINE_RECHARGE', ?, 'INFO')",
+                [`Employee ID ${empId} recharged ₹${paidAmount.toFixed(2)} via Easebuzz Payment Gateway (Txn: ${txnid}, Easebuzz ID: ${easebuzzid}). New Balance: ₹${newBalance.toFixed(2)}.`]
+            );
+
+            return res.json({
+                success: true,
+                message: `Wallet recharged successfully! Added ₹${paidAmount.toFixed(2)}.`,
+                newBalance
+            });
+        }
+
+        // CASE B: FOOD ORDER
+        if (!order_payload || !Array.isArray(order_payload.items)) {
+            return res.status(400).json({ success: false, message: "Order payload details required for meal order." });
+        }
+
+        // Idempotency check: see if order already exists for this txnid
+        const [existingOrder] = await db.query(
+            "SELECT order_id, coupon_code FROM orders WHERE checkout_token = ?",
+            [txnid]
+        );
+
+        if (existingOrder.length > 0) {
+            return res.json({
+                success: true,
+                order_id: existingOrder[0].order_id,
+                coupon_code: existingOrder[0].coupon_code,
+                duplicated: true
+            });
+        }
+
+        const couponCode = `CPN${Date.now()}`;
+        const qrCodePath = `/qr/${couponCode}.png`;
+        const category = order_payload.category || "Lunch";
+
+        // 1. Insert order
+        const [orderResult] = await db.query(
+            `INSERT INTO orders 
+            (employee_id, category, total_amount, payment_mode, payment_status, order_status, coupon_code, qr_code_path, checkout_token) 
+            VALUES (?, ?, ?, 'Easebuzz Online', 'SUCCESS', ?, ?, ?, ?)`,
+            [
+                empId,
+                category,
+                paidAmount,
+                (category && category.toLowerCase() === 'tiffin') ? 'REDEEMED' : 'COUPON_GENERATED',
+                couponCode,
+                qrCodePath,
+                txnid
+            ]
+        );
+        const orderId = orderResult.insertId;
+
+        // 2. Insert items & deduct inventory stock
+        for (const item of order_payload.items) {
+            const itemId = item.item_id || item.id;
+            const itemName = item.item_name || item.name;
+            const quantity = parseInt(item.quantity || item.selectedQty || 1);
+            const unitPrice = parseFloat(item.price || item.unit_price || 0);
+
+            await db.query(
+                `INSERT INTO order_items 
+                (order_id, item_id, item_name, quantity, unit_price, total_price) 
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [orderId, itemId, itemName, quantity, unitPrice, unitPrice * quantity]
+            );
+
+            await db.query(
+                `UPDATE menu_items 
+                SET available_qty = GREATEST(0, available_qty - ?),
+                    issued = issued + ?
+                WHERE item_id = ?`,
+                [quantity, quantity, itemId]
+            );
+        }
+
+        // 3. Insert payment record
+        const [lastPayment] = await db.query(`
+            SELECT payment_id
+            FROM payments
+            ORDER BY payment_id DESC
+            LIMIT 1
+        `);
+
+        let paymentId = "PAY0001";
+        if (lastPayment.length > 0) {
+            const lastNo = parseInt(lastPayment[0].payment_id.replace("PAY", ""));
+            paymentId = `PAY${String(lastNo + 1).padStart(4, "0")}`;
+        }
+
+        await db.query(
+            `INSERT INTO payments 
+            (payment_id, order_id, employee_id, amount, payment_method, payment_status, remarks) 
+            VALUES (?, ?, ?, ?, 'Easebuzz Online', 'SUCCESS', ?)`,
+            [
+                paymentId,
+                orderId,
+                empId,
+                paidAmount,
+                `Easebuzz ID: ${easebuzzid} | Txn: ${txnid}`
+            ]
+        );
+
+        // 4. Audit Log
+        await db.query(
+            "INSERT INTO audit_logs (action_name, details, severity) VALUES ('MEAL_PURCHASE_ONLINE', ?, 'INFO')",
+            [`Employee ID ${empId} paid ₹${paidAmount.toFixed(2)} via Easebuzz Online Gateway for Order ID ${orderId} (Coupon: ${couponCode}, Txn: ${txnid}).`]
+        );
+
+        return res.json({
+            success: true,
+            order_id: orderId,
+            coupon_code: couponCode,
+            payment_id: paymentId
+        });
+
+    } catch (err) {
+        console.error("Easebuzz verify error:", err);
+        return res.status(500).json({
+            success: false,
+            message: err.message || "Internal error verifying Easebuzz payment."
+        });
+    }
+});
+
+// 3. EASEBUZZ S2S WEBHOOK / REDIRECT CALLBACK (Fallback surl/furl)
+router.post("/easebuzz-response", async (req, res) => {
+    try {
+        console.log("[Easebuzz Webhook/Redirect] Received body:", req.body);
+        const responseBody = req.body;
+
+        const isHashValid = easebuzzService.verifyResponseHash(responseBody);
+        if (!isHashValid) {
+            console.error("[Easebuzz Webhook] Invalid signature hash!");
+            return res.status(400).send("Signature verification failed");
+        }
+
+        if (responseBody.status === "success") {
+            const type = responseBody.udf1;
+            const empId = parseInt(responseBody.udf2);
+            const amount = parseFloat(responseBody.amount);
+            const txnid = responseBody.txnid;
+            const easebuzzid = responseBody.easebuzzid || txnid;
+
+            if (type === "WALLET_RECHARGE" && empId) {
+                const [existingTx] = await db.query(
+                    "SELECT transaction_id FROM wallet_transactions WHERE reference_id = ? OR utr_number = ?",
+                    [txnid, easebuzzid]
+                );
+
+                if (existingTx.length === 0) {
+                    const [walletRows] = await db.query("SELECT balance FROM wallets WHERE employee_id = ?", [empId]);
+                    const currentBalance = walletRows.length > 0 ? parseFloat(walletRows[0].balance || 0) : 0;
+                    const newBalance = currentBalance + amount;
+                    const newSig = generateWalletSignature(empId, newBalance);
+
+                    if (walletRows.length === 0) {
+                        await db.query("INSERT INTO wallets (employee_id, balance, signature) VALUES (?, ?, ?)", [empId, newBalance, newSig]);
+                    } else {
+                        await db.query("UPDATE wallets SET balance = ?, signature = ? WHERE employee_id = ?", [newBalance, newSig, empId]);
+                    }
+
+                    await db.query(
+                        `INSERT INTO wallet_transactions 
+                        (employee_id, type, amount, status, mode, utr_number, reference_id, title) 
+                        VALUES (?, 'credit', ?, 'SUCCESS', 'Easebuzz Online', ?, ?, 'Instant Wallet Recharge (Easebuzz)')`,
+                        [empId, amount, easebuzzid, txnid]
+                    );
+                }
+                return res.redirect("/wallet");
+            }
+        }
+
+        // Default redirect back to user portal
+        return res.redirect("/home");
+    } catch (err) {
+        console.error("Easebuzz callback error:", err);
+        return res.redirect("/home");
+    }
+});
+
 module.exports = router;
