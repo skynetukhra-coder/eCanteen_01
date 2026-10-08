@@ -3,3 +3,16 @@ node_modules/
 .env.local
 *.log
 uploads/*
+
+# Laravel ignores
+vendor/
+backend_laravel/vendor/
+backend_laravel/.env
+backend_laravel/.env.backup
+backend_laravel/.env.production
+.phpunit.cache/
+backend_laravel/.phpunit.cache/
+backend_laravel/storage/framework/cache/data/*
+backend_laravel/storage/framework/sessions/*
+backend_laravel/storage/framework/views/*
+backend_laravel/storage/logs/*.log
