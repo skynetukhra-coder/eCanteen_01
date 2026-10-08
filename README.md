@@ -1,59 +1,104 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# eCanteen - Production Web Application
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+High-performance canteen management system featuring a **Laravel 12 REST API backend** and an embedded **React 19 SPA frontend**, optimized for cPanel/hPanel and shared/cloud hosting (Hostinger, Apache, Nginx).
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Architecture Overview
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Backend**: Laravel 12 (PHP 8.2+) REST API
+- **Frontend**: React 19 SPA (pre-compiled into `public/`)
+- **Database**: MySQL (compatible with existing `canteen` schema)
+- **Payment Gateway**: Easebuzz Hosted Checkout (SHA-512)
+- **Security**: JWT Authentication, HMAC-SHA256 Wallet Integrity Seals
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Directory Layout
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```text
+├── app/                  # Laravel Controllers, Models, and Services
+│   ├── Http/Controllers # API Controllers (Auth, Menu, Orders, Wallet, Easebuzz, etc.)
+│   ├── Models/           # Eloquent Models matching MySQL schema
+│   └── Services/         # EasebuzzService and WalletService
+├── config/               # App configuration
+├── database/             # Migrations and seeders
+├── public/               # Web Document Root
+│   ├── assets/           # Compiled React 19 JavaScript & CSS bundles
+│   ├── images/           # Application images and QR codes
+│   ├── index.html        # Single Page Application entry point
+│   ├── index.php         # Laravel entry point
+│   └── .htaccess         # Apache front controller routing
+├── routes/
+│   ├── api.php           # All /api endpoints
+│   └── web.php           # SPA fallback router
+├── .env.example          # Environment template
+├── .htaccess             # Root rewrite rule routing requests to public/
+└── composer.json         # PHP dependencies
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Hostinger / Production Deployment Guide
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 1. Upload or Clone
+Deploy the repository into your hosting directory (e.g. `public_html` or domain folder):
+```bash
+git clone https://github.com/skynetukhra-coder/eCanteen_01.git .
+```
 
-### Premium Partners
+### 2. Configure Environment (`.env`)
+Copy `.env.example` to `.env` and fill in your credentials:
+```bash
+cp .env.example .env
+```
+Ensure the following variables are configured:
+```ini
+APP_NAME=eCanteen
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://yourdomain.com
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=canteen
+DB_USERNAME=your_mysql_username
+DB_PASSWORD=your_mysql_password
 
-## Contributing
+JWT_SECRET=supersecretcanteenkey12345
+WALLET_HMAC_SECRET=canteen_wallet_integrity_key
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+EASEBUZZ_KEY=PCG0NDPL0
+EASEBUZZ_SALT=S4KSFDOFV
+EASEBUZZ_ENV=test
+```
 
-## Code of Conduct
+### 3. Install Dependencies & Generate Application Key
+Run composer via SSH (or Hostinger Terminal):
+```bash
+composer install --no-dev --optimize-autoloader
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 4. Cache Configurations for High Performance
+```bash
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
 
-## Security Vulnerabilities
+### 5. File Permissions
+Ensure the web server has write access to the storage and cache directories:
+```bash
+chmod -R 775 storage bootstrap/cache
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 6. Apache / Domain Configuration
+- If your domain's **Document Root** can be changed in Hostinger: Point it directly to `public/`.
+- If your Document Root is fixed to the repo root: The included root `.htaccess` will automatically rewrite all requests to `public/`.
+
+---
 
 ## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Proprietary / Internal Use.
