@@ -14,7 +14,7 @@
   "overrides": {
     "braces": "^3.0.3"
   },
-  "name": "backend",
+  "name": "ecanteen",
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
