@@ -1,0 +1,345 @@
+/* =====================================
+   PAGE
+===================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.success-page {
+    min-height: 100vh;
+    background: #edf2f7;
+    padding: 25px;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.success-main-card {
+    width: 100%;
+    max-width: 1100px;
+
+    background: #ffffff;
+
+    border-radius: 20px;
+    overflow: hidden;
+
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* =====================================
+   HEADER
+===================================== */
+
+.department-header {
+    background: #143d73;
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 18px 30px;
+}
+
+.dept-logo {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.dept-title {
+    flex: 1;
+    text-align: center;
+    padding: 0 20px;
+}
+
+.dept-title h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    line-height: 1.3;
+}
+
+.dept-title p {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* =====================================
+   CONTENT
+===================================== */
+
+.success-content {
+    padding: 40px 30px;
+    min-height: 650px;
+}
+
+/* =====================================
+   SUCCESS CARD
+===================================== */
+
+.success-card {
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 20px;
+
+    padding: 40px;
+
+    text-align: center;
+
+    margin-bottom: 30px;
+}
+
+.success-icon {
+    font-size: 90px;
+    color: #16a34a;
+
+    margin-bottom: 20px;
+}
+
+.success-card h1 {
+    color: #111827;
+    font-size: 34px;
+    margin-bottom: 10px;
+}
+
+.success-card p {
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* =====================================
+   RECEIPT CARD
+===================================== */
+
+.receipt-card {
+    background: #ffffff;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 20px;
+
+    padding: 25px;
+
+    margin-bottom: 30px;
+}
+
+.receipt-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin-bottom: 20px;
+
+    color: #143d73;
+}
+
+.receipt-header svg {
+    font-size: 24px;
+}
+
+.receipt-header h3 {
+    font-size: 24px;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 14px 0;
+
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.receipt-row:last-child {
+    border-bottom: none;
+}
+
+.receipt-row span {
+    color: #6b7280;
+}
+
+.receipt-row strong {
+    color: #111827;
+}
+
+/* =====================================
+   ACTION BUTTONS
+===================================== */
+
+.success-actions {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.coupon-btn,
+.home-btn {
+    border: none;
+
+    padding: 14px 28px;
+
+    border-radius: 12px;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    transition: 0.25s ease;
+}
+
+.coupon-btn {
+    background: #16a34a;
+    color: white;
+}
+
+.coupon-btn:hover {
+    background: #15803d;
+}
+
+.home-btn {
+    background: #143d73;
+    color: white;
+}
+
+.home-btn:hover {
+    background: #0f2f59;
+}
+
+/* =====================================
+   FOOTER
+===================================== */
+
+.bottom-footer {
+    border-top: 1px solid #e5e7eb;
+
+    background: #ffffff;
+
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+
+    padding: 15px 10px;
+}
+
+.footer-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 6px;
+
+    cursor: pointer;
+
+    color: #374151;
+
+    transition: 0.2s ease;
+}
+
+.footer-item svg {
+    font-size: 20px;
+}
+
+.footer-item span {
+    font-size: 13px;
+}
+
+.footer-item:hover {
+    color: #143d73;
+}
+
+/* =====================================
+   RESPONSIVE
+===================================== */
+
+@media (max-width: 900px) {
+
+    .department-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .dept-title h1 {
+        font-size: 22px;
+    }
+
+    .success-content {
+        padding: 20px;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .success-page {
+        padding: 10px;
+    }
+
+    .dept-logo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .dept-title h1 {
+        font-size: 18px;
+    }
+
+    .success-card {
+        padding: 25px 15px;
+    }
+
+    .success-card h1 {
+        font-size: 26px;
+    }
+
+    .success-icon {
+        font-size: 70px;
+    }
+
+    .success-actions {
+        flex-direction: column;
+    }
+
+    .coupon-btn,
+    .home-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .bottom-footer {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+}
+
+/* Print styles for Guest Coupon */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .print-area, .print-area * {
+        visibility: visible;
+    }
+    .print-area {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0 !important;
+        border: none !important;
+    }
+}

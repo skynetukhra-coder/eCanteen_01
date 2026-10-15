@@ -1,104 +1,75 @@
 # eCanteen - Production Web Application
 
-High-performance canteen management system featuring a **Laravel 12 REST API backend** and an embedded **React 19 SPA frontend**, optimized for cPanel/hPanel and shared/cloud hosting (Hostinger, Apache, Nginx).
+High-performance canteen management system featuring an **Express / Node.js backend** and an embedded **React 19 SPA frontend**, optimized for Hostinger (Shared Hosting / Cloud / VPS) and AWS EC2.
 
 ---
 
 ## Architecture Overview
 
-- **Backend**: Laravel 12 (PHP 8.2+) REST API
-- **Frontend**: React 19 SPA (pre-compiled into `public/`)
-- **Database**: MySQL (compatible with existing `canteen` schema)
-- **Payment Gateway**: Easebuzz Hosted Checkout (SHA-512)
+- **Backend**: Express / Node.js REST API (`backend/`)
+- **Frontend**: React 19 SPA (pre-compiled into `backend/public/`)
+- **Database**: MySQL / MariaDB (database `canteen`)
+- **Payment Gateway**: Easebuzz Hosted Checkout & Webhooks (SHA-512)
 - **Security**: JWT Authentication, HMAC-SHA256 Wallet Integrity Seals
 
 ---
 
-## Directory Layout
+## Directory Structure
 
 ```text
-├── app/                  # Laravel Controllers, Models, and Services
-│   ├── Http/Controllers # API Controllers (Auth, Menu, Orders, Wallet, Easebuzz, etc.)
-│   ├── Models/           # Eloquent Models matching MySQL schema
-│   └── Services/         # EasebuzzService and WalletService
-├── config/               # App configuration
-├── database/             # Migrations and seeders
-├── public/               # Web Document Root
-│   ├── assets/           # Compiled React 19 JavaScript & CSS bundles
-│   ├── images/           # Application images and QR codes
-│   ├── index.html        # Single Page Application entry point
-│   ├── index.php         # Laravel entry point
-│   └── .htaccess         # Apache front controller routing
-├── routes/
-│   ├── api.php           # All /api endpoints
-│   └── web.php           # SPA fallback router
-├── .env.example          # Environment template
-├── .htaccess             # Root rewrite rule routing requests to public/
-└── composer.json         # PHP dependencies
+├── backend/
+│   ├── config/             # Database pool & Multer configuration
+│   ├── controllers/        # Auth, Feedback, Menu, and Payment controllers
+│   ├── middleware/         # JWT verification middleware
+│   ├── models/             # Employee model
+│   ├── public/             # Pre-compiled React production bundle (served by Express)
+│   │   ├── assets/         # Bundled JS & CSS
+│   │   ├── images/         # Static logos, QR code images
+│   │   ├── index.html      # SPA entry point
+│   │   └── .htaccess       # Apache rewrite rules for React client routing
+│   ├── routes/             # API routes (orders, wallet, easebuzz, menu, auth, etc.)
+│   ├── services/           # EasebuzzService (SHA-512) & EmailService
+│   ├── uploads/            # Persistent uploaded files
+│   ├── .env.example        # Environment variable template
+│   ├── package.json        # Production dependencies
+│   └── server.js           # Main application entry point
+├── frontend/               # React 19 source code (for development)
+└── .gitignore
 ```
 
 ---
 
-## Hostinger / Production Deployment Guide
+## Quick Deployment Guide (Hostinger / cPanel / AWS EC2)
 
-### 1. Upload or Clone
-Deploy the repository into your hosting directory (e.g. `public_html` or domain folder):
+### 1. Install Dependencies
+In the `backend/` directory, install production dependencies:
 ```bash
-git clone https://github.com/skynetukhra-coder/eCanteen_01.git .
+cd backend
+npm install --omit=dev
 ```
 
-### 2. Configure Environment (`.env`)
-Copy `.env.example` to `.env` and fill in your credentials:
-```bash
-cp .env.example .env
-```
-Ensure the following variables are configured:
-```ini
-APP_NAME=eCanteen
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://yourdomain.com
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+### 2. Configure Environment (`backend/.env`)
+Create `backend/.env` from `backend/.env.example`:
+```env
+PORT=5000
+DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=canteen
-DB_USERNAME=your_mysql_username
-DB_PASSWORD=your_mysql_password
-
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=canteen
 JWT_SECRET=supersecretcanteenkey12345
-WALLET_HMAC_SECRET=canteen_wallet_integrity_key
 
-EASEBUZZ_KEY=PCG0NDPL0
-EASEBUZZ_SALT=S4KSFDOFV
-EASEBUZZ_ENV=test
+# Easebuzz Live Kit Configuration
+EASEBUZZ_KEY=JM67759I5K
+EASEBUZZ_SALT=Z8WPH0LZLV
+EASEBUZZ_ENV=prod
+APP_BASE_URL=https://yourdomain.com
 ```
 
-### 3. Install Dependencies & Generate Application Key
-Run composer via SSH (or Hostinger Terminal):
+### 3. Start Server
 ```bash
-composer install --no-dev --optimize-autoloader
-php artisan key:generate
+node server.js
+# Or with PM2 process manager:
+pm2 start server.js --name "canteen"
 ```
-
-### 4. Cache Configurations for High Performance
-```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-### 5. File Permissions
-Ensure the web server has write access to the storage and cache directories:
-```bash
-chmod -R 775 storage bootstrap/cache
-```
-
-### 6. Apache / Domain Configuration
-- If your domain's **Document Root** can be changed in Hostinger: Point it directly to `public/`.
-- If your Document Root is fixed to the repo root: The included root `.htaccess` will automatically rewrite all requests to `public/`.
-
----
-
-## License
-Proprietary / Internal Use.
+Express serves both the `/api/...` endpoints and the compiled frontend at `/`.

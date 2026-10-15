@@ -1,0 +1,572 @@
+.wallet-page {
+    padding: 25px;
+    background: #f4f7fc;
+    min-height: 100vh;
+}
+
+.wallet-header-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.wallet-header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.wallet-icon-box {
+    width: 64px;
+    height: 64px;
+    background: #eef4ff;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb;
+    font-size: 28px;
+}
+
+.wallet-header-left h2 {
+    margin: 0;
+    color: #001b4d;
+    font-size: 36px;
+    font-weight: 700;
+}
+
+.wallet-header-left p {
+    margin-top: 8px;
+    color: #64748b;
+    font-size: 18px;
+}
+
+.wallet-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 12px 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.wallet-search input {
+    border: none;
+    outline: none;
+    width: 250px;
+    background: transparent !important;
+    color: #111827 !important;
+}
+
+.wallet-search input::placeholder {
+    color: #9ca3af !important;
+}
+
+.wallet-stats {
+    display: grid;
+
+    grid-template-columns:
+        repeat(auto-fit, minmax(250px, 1fr));
+
+    gap: 20px;
+
+    margin-bottom: 25px;
+}
+
+.wallet-stat-card {
+    background: white;
+
+    padding: 25px;
+
+    border-radius: 16px;
+
+    text-align: center;
+
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.wallet-stat-card svg {
+    font-size: 35px;
+    color: #f59e0b;
+    margin-bottom: 10px;
+}
+
+.wallet-stat-card h3 {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.wallet-stat-card p {
+    color: #6b7280;
+}
+
+.wallet-chart-card,
+.wallet-table-card,
+.history-card {
+    background: white;
+
+    padding: 20px;
+
+    border-radius: 16px;
+
+    margin-bottom: 25px;
+
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.wallet-chart-card h2,
+.wallet-table-card h2,
+.history-card h2 {
+    margin-bottom: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th {
+    background: #f9fafb;
+    text-align: left;
+    padding: 14px;
+}
+
+table td {
+    padding: 14px;
+    border-bottom: 1px solid #eee;
+}
+
+.recharge-btn {
+    border: none;
+
+    background: #10b981;
+    color: white;
+
+    padding: 8px 14px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+.deduct-btn {
+    border: none;
+
+    background: #ef4444;
+    color: white;
+
+    padding: 8px 14px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+}
+
+.recharts-default-tooltip {
+    border-radius: 10px !important;
+    border: none !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+@media(max-width:768px) {
+
+    .wallet-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .wallet-search {
+        width: 100%;
+    }
+
+    .wallet-search input {
+        width: 100%;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* Alert Banner */
+.tamper-banner {
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-left: 6px solid #ef4444;
+    padding: 16px;
+    border-radius: 12px;
+    color: #991b1b;
+    font-weight: 600;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tamper-banner svg {
+    font-size: 20px;
+    color: #ef4444;
+}
+
+/* Tamper Badge in Table */
+.tamper-badge {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fee2e2;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+    display: inline-block;
+}
+
+/* Scan / Verify Action Button */
+.verify-btn {
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #374151;
+    padding: 12px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.verify-btn:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+/* Severity labels in logs */
+.log-severity-critical {
+    color: #ef4444;
+    font-weight: 700;
+    background: #fef2f2;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+.log-severity-info {
+    color: #0b63f6;
+    font-weight: 700;
+    background: #eff6ff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+}
+
+/* Date Range Filters and Report Buttons */
+.orders-date-filter-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-input-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-input-group input[type="date"] {
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #334155;
+    background: #f8fafc;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.filter-input-group input[type="date"]:focus {
+    border-color: #2563eb;
+    background: white;
+}
+
+.reset-filter-btn {
+    align-self: flex-end;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.reset-filter-btn:hover {
+    background: #e2e8f0;
+}
+
+.today-filter-btn {
+    align-self: flex-end;
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.today-filter-btn:hover {
+    background: #c7d2fe;
+}
+
+.print-report-btn {
+    align-self: flex-end;
+    background: #059669;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.print-report-btn:hover {
+    background: #047857;
+}
+
+.export-csv-btn {
+    align-self: flex-end;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.export-csv-btn:hover {
+    background: #1d4ed8;
+}
+
+/* User Self-Service Wallet Recharges Table Styles */
+.user-recharges-card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+.user-recharges-card h2 {
+    margin: 0 0 6px 0;
+    color: #001b4d;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.user-recharges-card p {
+    margin: 0 0 20px 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.approve-user-btn {
+    border: none;
+    background: #16a34a;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2);
+}
+
+.approve-user-btn:hover {
+    background: #15803d;
+    transform: translateY(-1px);
+}
+
+.cancel-user-btn {
+    border: none;
+    background: #dc2626;
+    color: white;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);
+}
+
+.cancel-user-btn:hover {
+    background: #b91c1c;
+    transform: translateY(-1px);
+}
+
+.status-badge-pending {
+    background: #fef3c7;
+    color: #d97706;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.status-badge-success {
+    background: #dcfce7;
+    color: #15803d;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+.status-badge-cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-block;
+}
+
+/* Pagination Styling for Employee Wallets Table */
+.wallet-pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.wallet-pagination-info {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.wallet-pagination-info strong {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.wallet-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.pagination-btn {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #f8fafc;
+}
+
+.pagination-btn.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+.pagination-ellipsis {
+    color: #94a3b8;
+    padding: 0 6px;
+    font-weight: 700;
+    user-select: none;
+}
+
+/* Method Column Header Dropdown */
+.method-header-dropdown {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.method-header-dropdown:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+}
+
+.method-header-dropdown:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+

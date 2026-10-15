@@ -1,0 +1,349 @@
+/* =========================
+   GLOBAL
+========================= */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* =========================
+   PAGE (Background Image Setup)
+========================= */
+
+.login-page {
+  min-height: 100vh;
+  background: #dcd3be; /* warm color matching parchment borders */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.login-main-card {
+  width: 100%;
+  max-width: 700px; /* Scaled down to match correct proportions */
+  aspect-ratio: 1 / 1.41; /* Keeps the aspect ratio of the sketch document stable */
+  background-color: #dcd3be;
+  border-radius: 12px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-background-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+/* =========================
+   HEADER (Repositioned onto the image)
+========================= */
+
+.login-department-header {
+  position: absolute;
+  top: 26.5%; /* Placed exactly under the monster's chin */
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10%;
+  z-index: 2;
+}
+
+.login-dept-logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.login-dept-title {
+  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+  color: #ffffff;
+}
+
+.login-dept-title h1 {
+  font-size: 15.5px;
+  font-weight: 800;
+  margin-bottom: 2px;
+  line-height: 1.25;
+  color: #fffaf2;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 2px 6px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(22, 42, 92, 0.5);
+}
+
+.login-dept-title p {
+  font-size: 12px;
+  opacity: 1;
+  font-weight: 800;
+  color: #fffaf2;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.95), 
+    0 1.5px 5px rgba(0, 0, 0, 0.8);
+}
+
+/* =========================
+   CONTENT AREA
+========================= */
+
+.login-content-area {
+  position: absolute;
+  top: 36.5%; /* Perfectly aligns with the top boundary of the blank scroll */
+  bottom: 8%;
+  left: 27.5%; /* Restricts layout inside the scroll's left border */
+  right: 27.5%; /* Restricts layout inside the scroll's right border */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+/* =========================
+   LOGIN CARD (Transparent wrapper)
+========================= */
+
+.login-card {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.login-card h2 {
+  text-align: center;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: #374151;
+  margin-bottom: 22px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* =========================
+   FORM FIELDS
+========================= */
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  color: #1f2937;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.form-group input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.05); /* Lets parchment texture pass through */
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
+  color: #111827;
+  font-weight: 600;
+}
+
+.form-group input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.form-group input:focus {
+  border-color: #162a5c;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* =========================
+   BUTTONS & ACTIONS
+========================= */
+
+.remember-forgot-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  margin-top: 4px;
+}
+
+.remember-me-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-me-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #162a5c;
+}
+
+.login-btn {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 6px;
+  background: #162a5c; /* Exact dark blue from image */
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+  margin-top: 4px;
+}
+
+.login-btn:hover {
+  background: #0f1e43;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 10px 0;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+}
+
+.login-divider:not(:empty)::before { margin-right: 8px; }
+.login-divider:not(:empty)::after { margin-left: 8px; }
+
+/* =========================
+   GOOGLE SIGN IN WRAPPER
+========================= */
+
+.google-signin-wrapper {
+  position: relative;
+  width: 100%;
+  height: 38px;
+}
+
+.google-custom-btn {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.05); /* Same as input background */
+  color: #111827;
+  border: 1px solid #111827;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Let clicks pass to hidden official button */
+}
+
+.google-official-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.01; /* Invisible but clickable */
+  cursor: pointer;
+  z-index: 10;
+}
+
+.google-official-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  cursor: pointer !important;
+}
+
+.forgot-password {
+  margin-top: 14px;
+  text-align: center;
+  position: relative;
+  z-index: 20;
+}
+
+.forgot-password span {
+  color: #162a5c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.forgot-password span:hover {
+  text-decoration: underline;
+}
+
+/* =========================
+   FOOTER
+========================= */
+
+.login-footer {
+  position: absolute;
+  bottom: 2.5%;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 700;
+  z-index: 2;
+}
+
+/* =========================
+   RESPONSIVE (Compositional adaptation)
+========================= */
+
+@media (max-width: 600px) {
+  .login-main-card {
+    max-width: 100%;
+    aspect-ratio: auto;
+    min-height: 95vh;
+    background-size: 100% 100%;
+  }
+  
+  .login-department-header {
+    top: 20%;
+    padding: 0 6%;
+  }
+  
+  .login-content-area {
+    top: 32%;
+    left: 18%;
+    right: 18%;
+  }
+}
